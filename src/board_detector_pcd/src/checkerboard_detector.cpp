@@ -12,23 +12,9 @@
 #include <pcl/filters/extract_indices.h>
 #include "board_detector_pcd/utils.hpp"
 
-struct PointXYZIR
-{
-  PCL_ADD_POINT4D;                  // Preferred way of adding a XYZ+padding
-  int ring;
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW   // Make sure our new allocators are aligned
-} EIGEN_ALIGN16;                    // Enforce SSE padding for correct memory alignment
-
-POINT_CLOUD_REGISTER_POINT_STRUCT(PointXYZIR,
-                                  (float, x, x)
-                                  (float, y, y)
-                                  (float, z, z)
-                                  (int, ring, ring)
-)
-
 // Defining some types
-using PointT = PointXYZIR;
-using PointCloudT = pcl::PointCloud<PointT>;
+// using PointT = PointXYZIR;
+// using PointCloudT = pcl::PointCloud<PointT>;
 
 // ROS Node
 class CheckerboardDetector : public rclcpp:Node {
@@ -62,13 +48,29 @@ class CheckerboardDetector : public rclcpp:Node {
 
 
     PointCloudT::Ptr processPointCloud(const PointCloudT::Ptr& cloud) {
-      // Placeholder for processed cloud, replace with actual processing logic
-      PointCloudT::Ptr processed_cloud(new PointCloudT);
+        // 1. Checkerboard Point Selection
+        // a. Compute Pitch Angle and Segment Rings
+        std::vector<PointCloudT::Ptr> segmented_rings = segmentRings(cloud);
 
-      // Checkerboard Point Selection
-      Get the rings for the PointCloud
+        // b. Cluster Points within Each Ring using PCA and DBSCAN
+        std::vector<PointCloudT::Ptr> clustered_points = clusterPoints(segmented_rings);
 
-      // Cluster the Points within each ring using PCA and DBSCAN
+        // 2. Checkerboard Feature Extraction
+        // a. RANSAC-based Plane Fitting
+        PointCloudT::Ptr inlier_points(new PointCloudT);
+        Eigen::VectorXf plane_coefficients;
+        fitPlane(clustered_points, inlier_points, plane_coefficients);
 
+        // b. Project Points onto Plane
+        PointCloudT::Ptr projected_points = projectPoints(inlier_points, plane_coefficients);
+
+        // c. Extract Edge Points
+        PointCloudT::Ptr edge_points = extractEdgePoints(projected_points);
+
+        // 3. Checkerboard Tracking
+        // a. Bounding Box Creation and Tracking
+        PointCloudT::Ptr tracked_points = trackCheckerboard(edge_points);
+
+        return tracked_points;
     }
 }
