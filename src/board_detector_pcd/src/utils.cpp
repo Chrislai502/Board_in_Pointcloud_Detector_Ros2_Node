@@ -100,12 +100,12 @@ void fromPCLPointCloud2(const pcl::PCLPointCloud2& msg, pcl::PointCloud<PointT>&
         // Should usually be able to copy all rows at once
         if (msg.row_step == cloud_row_step)
         {
-        memcpy (cloud_data, msg_data, msg.width * msg.height * sizeof(PointT));
+            memcpy (cloud_data, msg_data, msg.width * msg.height * sizeof(PointT));
         }
         else
         {
-        for (uindex_t i = 0; i < msg.height; ++i, cloud_data += cloud_row_step, msg_data += msg.row_step)
-            memcpy (cloud_data, msg_data, cloud_row_step);
+            for (uindex_t i = 0; i < msg.height; ++i, cloud_data += cloud_row_step, msg_data += msg.row_step)
+                memcpy (cloud_data, msg_data, cloud_row_step);
         }
 
     }
@@ -114,17 +114,17 @@ void fromPCLPointCloud2(const pcl::PCLPointCloud2& msg, pcl::PointCloud<PointT>&
         // If not, memcpy each group of contiguous fields separately
         for (std::size_t row = 0; row < msg.height; ++row)
         {
-        const std::uint8_t* row_data = msg_data + row * msg.row_step;
-        for (std::size_t col = 0; col < msg.width; ++col)
-        {
-            const std::uint8_t* msg_data = row_data + col * msg.point_step;
-            for (const detail::FieldMapping& mapping : field_map)
+            const std::uint8_t* row_data = msg_data + row * msg.row_step;
+            for (std::size_t col = 0; col < msg.width; ++col)
             {
-            std::copy(msg_data + mapping.serialized_offset, msg_data + mapping.serialized_offset + mapping.size,
-                        cloud_data + mapping.struct_offset);
+                const std::uint8_t* msg_data = row_data + col * msg.point_step;
+                for (const detail::FieldMapping& mapping : field_map)
+                {
+                std::copy(msg_data + mapping.serialized_offset, msg_data + mapping.serialized_offset + mapping.size,
+                            cloud_data + mapping.struct_offset);
+                }
+                cloud_data += sizeof (PointT);
             }
-            cloud_data += sizeof (PointT);
-        }
         }
     }
 }
